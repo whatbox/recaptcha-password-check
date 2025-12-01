@@ -1,0 +1,36 @@
+{
+    "name": "whatbox/recaptcha-password-check",
+    "description": "PHP client for Google's reCAPTCHA password check API",
+    "type": "library",
+    "license": "Apache-2.0",
+    "require": {
+        "php": "^8.1",
+        "phpseclib/phpseclib": "^3.0",
+        "guzzlehttp/guzzle": "^7.8"
+    },
+    "suggest": {
+        "ext-scrypt": "20x faster cryptographic operations"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "*",
+        "phpstan/phpstan": "*",
+        "squizlabs/php_codesniffer": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "ReCaptcha\\PasswordCheck\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "ReCaptcha\\PasswordCheck\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": [
+            "vendor/bin/phpunit tests",
+            "vendor/bin/phpcs --ignore=vendor/* ./",
+            "vendor/bin/phpstan analyze --memory-limit=-1"
+        ]
+    }
+}
