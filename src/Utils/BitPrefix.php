@@ -9,8 +9,7 @@ final class BitPrefix
     private const BYTE_SIZE = 8;
 
     private function __construct(
-        private readonly string $prefix,
-        private readonly int $length
+        private readonly string $prefix
     ) {
     }
 
@@ -22,7 +21,7 @@ final class BitPrefix
         }
 
         if ($prefixLength === 0) {
-            return new self('', 0);
+            return new self('');
         }
 
         $byteLength = intdiv($prefixLength + self::BYTE_SIZE - 1, self::BYTE_SIZE);
@@ -31,17 +30,12 @@ final class BitPrefix
         $lastIndex = $byteLength - 1;
         $prefix[$lastIndex] = chr(ord($prefix[$lastIndex]) & $mask);
 
-        return new self($prefix, $prefixLength);
+        return new self($prefix);
     }
 
     public function getPrefix(): string
     {
         return $this->prefix;
-    }
-
-    public function getLength(): int
-    {
-        return $this->length;
     }
 
     private static function bitMask(int $prefixLength): int

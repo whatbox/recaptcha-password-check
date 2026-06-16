@@ -5,14 +5,10 @@ declare(strict_types=1);
 namespace ReCaptcha\PasswordCheck;
 
 use ReCaptcha\PasswordCheck\Crypto\EcCommutativeCipher;
-use ReCaptcha\PasswordCheck\Crypto\HashType;
-use ReCaptcha\PasswordCheck\Crypto\SupportedCurve;
 use ReCaptcha\PasswordCheck\Utils\CryptoHelper;
 
 class PasswordCheckVerification
 {
-    private const CURVE = SupportedCurve::SECP256R1;
-    private const HASH_TYPE = HashType::SHA256;
     private const USERNAME_HASH_PREFIX_LENGTH = 26;
 
     private function __construct(
@@ -35,7 +31,7 @@ class PasswordCheckVerification
             throw new \InvalidArgumentException('Password cannot be null or empty');
         }
 
-        $cipher ??= EcCommutativeCipher::createWithNewKey(self::CURVE, self::HASH_TYPE);
+        $cipher ??= EcCommutativeCipher::createWithNewKey();
         $canonicalUsername = CryptoHelper::canonicalizeUsername($username);
         $hashedPair = CryptoHelper::hashUsernamePasswordPair($canonicalUsername, $password);
         $encryptedHash = $cipher->encrypt($hashedPair);
@@ -69,7 +65,7 @@ class PasswordCheckVerification
             }
         }
 
-        return new PasswordCheckResult($this, $this->username, $credentialsLeaked);
+        return new PasswordCheckResult($this->username, $credentialsLeaked);
     }
 
     public function getUsername(): string

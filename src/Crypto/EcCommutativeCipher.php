@@ -6,61 +6,43 @@ namespace ReCaptcha\PasswordCheck\Crypto;
 
 use InvalidArgumentException;
 use phpseclib3\Crypt\EC\BaseCurves\Prime;
+use phpseclib3\Crypt\EC\Curves\secp256r1;
 use phpseclib3\Math\BigInteger;
 use phpseclib3\Math\PrimeField\Integer as PrimeInteger;
 
 final class EcCommutativeCipher
 {
+    private const HASH_ALGO = 'sha256';
+    private const HASH_BITS = 256;
+
     private readonly Prime $curve;
     private readonly BigInteger $privateKey;
-    private readonly HashType $hashType;
     private readonly int $fieldLength;
 
-    private function __construct(Prime $curve, HashType $hashType, BigInteger $privateKey)
+    private function __construct(Prime $curve, BigInteger $privateKey)
     {
         $this->curve = $curve;
-        $this->hashType = $hashType;
         $curve->rangeCheck($privateKey);
         $this->privateKey = $privateKey;
         $this->fieldLength = $curve->getLengthInBytes();
     }
 
-    public static function createWithNewKey(
-        SupportedCurve $curve = SupportedCurve::SECP256R1,
-        HashType $hashType = HashType::SHA256
-    ): self {
-        $curveImpl = $curve->curve();
-        $privateKey = $curveImpl->createRandomMultiplier();
+    public static function createWithNewKey(): self
+    {
+        $curve = new secp256r1();
+        $privateKey = $curve->createRandomMultiplier();
 
-        return new self($curveImpl, $hashType, $privateKey);
+        return new self($curve, $privateKey);
     }
 
-    public static function createFromKey(
-        SupportedCurve $curve,
-        string $keyBytes,
-        HashType $hashType = HashType::SHA256
-    ): self {
-        $curveImpl = $curve->curve();
-        $privateKey = self::bytesToBigInteger($keyBytes);
-
-        return new self($curveImpl, $hashType, $privateKey);
-    }
-
-    public static function validateCiphertext(
-        string $ciphertext,
-        SupportedCurve $curve = SupportedCurve::SECP256R1
-    ): bool {
+    public static function validateCiphertext(string $ciphertext): bool
+    {
         try {
-            self::decodePointForCurve($ciphertext, $curve->curve());
+            self::decodePointForCurve($ciphertext, new secp256r1());
             return true;
         } catch (\Throwable) {
             return false;
         }
-    }
-
-    public function getPrivateKeyBytes(): string
-    {
-        return self::bigIntegerToBytes($this->privateKey);
     }
 
     public function encrypt(string $plaintext): string
@@ -172,17 +154,16 @@ final class EcCommutativeCipher
 
     private function randomOracle(string $bytes, BigInteger $maxValue): BigInteger
     {
-        $hashBits = $this->hashType->bits();
-        $outputBitLength = $maxValue->getLength() + $hashBits;
-        $iterations = intdiv($outputBitLength + $hashBits - 1, $hashBits);
-        $excessBits = $iterations * $hashBits - $outputBitLength;
+        $outputBitLength = $maxValue->getLength() + self::HASH_BITS;
+        $iterations = intdiv($outputBitLength + self::HASH_BITS - 1, self::HASH_BITS);
+        $excessBits = $iterations * self::HASH_BITS - $outputBitLength;
         $hashOutput = new BigInteger(0);
         $counter = new BigInteger(1);
 
         for ($i = 0; $i < $iterations; $i++) {
-            $hashOutput = $hashOutput->bitwise_leftShift($hashBits);
+            $hashOutput = $hashOutput->bitwise_leftShift(self::HASH_BITS);
             $counterBytes = self::bigIntegerToBytes($counter);
-            $hash = $this->hashType->digest($counterBytes . $bytes);
+            $hash = hash(self::HASH_ALGO, $counterBytes . $bytes, true);
             $hashOutput = $hashOutput->add(self::bytesToBigInteger($hash));
             $counter = $counter->add(new BigInteger(1));
         }
