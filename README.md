@@ -6,15 +6,17 @@ A privacy-respecting solution to check username, password pairs against known br
 
 Similar to [Have I Been Pwned](https://haveibeenpwned.com/API/v3#SearchingPwnedPasswordsByRange), but a commercial API with fewer false positives by considering username and password together, instead of password alone.
 
+
 ## Requirements
 
 - PHP 8.1+
-- Composer
+- [ext-scrypt](https://github.com/DomBlack/php-scrypt) is optional, but recommended for performance
+
 
 ## Installation
 
 ```bash
-composer install
+composer require whatbox/recaptcha-password-check
 ```
 
 ## Usage
@@ -26,15 +28,11 @@ composer install
 <?php
 
 use ReCaptcha\PasswordCheck\Client\ReCaptchaPasswordCheckClient;
-use ReCaptcha\PasswordCheck\PasswordCheckVerification;
 
-$verification = PasswordCheckVerification::create($username, $password);
-
-$client = new ReCaptchaPasswordCheckClient();
-$result = $client->completeVerification(
-    $projectId,
-    $apiKey,
-    $verification,
+$client = new ReCaptchaPasswordCheckClient($projectId, $apiKey);
+$result = $client->checkPassword(
+    $username,
+    $password,
 
     // Optional: If you use reCAPTCHA bot protection, you can attach this password check to the
     // reCaptcha Token and feed Google additional data in exchange for more accurate bot scores
@@ -50,11 +48,38 @@ if ($result->areCredentialsLeaked()) {
 }
 ```
 
+
+## Granular Usage
+
+```php
+<?php
+
+use ReCaptcha\PasswordCheck\Client\ReCaptchaPasswordCheckClient;
+use ReCaptcha\PasswordCheck\PasswordCheckVerification;
+
+$client = new ReCaptchaPasswordCheckClient($projectId, $apiKey);
+
+// Hashing and crypto (CPU bound)
+$verification = PasswordCheckVerification::create($usernameOrEmail, $password);
+
+// Sending to Google (Network latency bound)
+$result = $client->completeVerification($verification);
+
+if ($result->areCredentialsLeaked()) {
+    // Prompt the user to reset their password.
+}
+```
+
+The `$verification` object holds the private key needed to decrypt Google's response, so it must be
+the same instance for both phases and must never be serialized to shared storage.
+
+
 ## Running tests
 
 ```bash
 composer test
 ```
+
 
 ## Project structure
 
@@ -62,6 +87,7 @@ composer test
 - `src/Utils` – Username canonicalization, PHP Scrypt, and bit-prefix helpers.
 - `src/Client` – High-level HTTP client for Google reCAPTCHA Password Check.
 - `tests/` – PHPUnit test suite mirroring the upstream reference coverage.
+
 
 ## License
 
