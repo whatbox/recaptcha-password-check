@@ -113,33 +113,12 @@ final class EcCommutativeCipher
 
     private static function decodePointForCurve(string $ciphertext, Prime $curve): array
     {
-        $fieldLength = $curve->getLengthInBytes();
-        if (strlen($ciphertext) !== $fieldLength + 1) {
+        // derivePoint() validates the prefix byte and that the point is on the curve, but not the length
+        if (strlen($ciphertext) !== $curve->getLengthInBytes() + 1) {
             throw new InvalidArgumentException('Ciphertext has invalid length');
         }
 
-        $prefix = ord($ciphertext[0]);
-        if ($prefix !== 2 && $prefix !== 3) {
-            throw new InvalidArgumentException('Unsupported point encoding');
-        }
-
-        $xBytes = substr($ciphertext, 1);
-        $fieldX = $curve->convertInteger(self::bytesToBigInteger($xBytes));
-        $rhs = $fieldX->multiply($fieldX)->multiply($fieldX)
-            ->add($fieldX->multiply($curve->getA()))
-            ->add($curve->getB());
-        $sqrt = $rhs->squareRoot();
-        if ($sqrt === false) {
-            throw new InvalidArgumentException('Point not on curve');
-        }
-
-        $isOdd = $sqrt->isOdd();
-        $shouldBeOdd = $prefix === 3;
-        if ($isOdd !== $shouldBeOdd) {
-            $sqrt = $sqrt->negate();
-        }
-
-        return [$fieldX, $sqrt];
+        return $curve->derivePoint($ciphertext);
     }
 
     private function padToFieldLength(string $bytes): string
