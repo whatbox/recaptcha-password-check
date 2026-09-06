@@ -91,7 +91,7 @@ final class EcCommutativeCipher
                 }
                 return [$fieldX, $sqrt];
             }
-            $candidate = $this->randomOracle(self::bigIntegerToBytes($candidate), $prime);
+            $candidate = $this->randomOracle(ltrim($candidate->toBytes(), "\0") ?: "\0", $prime);
         }
     }
 
@@ -122,30 +122,13 @@ final class EcCommutativeCipher
         $outputBitLength = $maxValue->getLength() + self::HASH_BITS;
         $iterations = intdiv($outputBitLength + self::HASH_BITS - 1, self::HASH_BITS);
         $excessBits = $iterations * self::HASH_BITS - $outputBitLength;
-        $hashOutput = new BigInteger(0);
-        $counter = new BigInteger(1);
 
-        for ($i = 0; $i < $iterations; $i++) {
-            $hashOutput = $hashOutput->bitwise_leftShift(self::HASH_BITS);
-            $counterBytes = self::bigIntegerToBytes($counter);
-            $hash = hash(self::HASH_ALGO, $counterBytes . $bytes, true);
-            $hashOutput = $hashOutput->add(self::bytesToBigInteger($hash));
-            $counter = $counter->add(new BigInteger(1));
+        $hashOutput = '';
+        // Counter is a minimal big-endian integer; it never exceeds one byte for any supported curve
+        for ($counter = 1; $counter <= $iterations; $counter++) {
+            $hashOutput .= hash(self::HASH_ALGO, chr($counter) . $bytes, true);
         }
 
-        $hashOutput = $hashOutput->bitwise_rightShift($excessBits);
-
-        return $hashOutput->divide($maxValue)[1];
-    }
-
-    private static function bigIntegerToBytes(BigInteger $value): string
-    {
-        $bytes = $value->toBytes();
-        return $bytes === '' ? "\0" : ltrim($bytes, "\0");
-    }
-
-    private static function bytesToBigInteger(string $bytes): BigInteger
-    {
-        return new BigInteger("\0" . $bytes, 256);
+        return (new BigInteger($hashOutput, 256))->bitwise_rightShift($excessBits)->divide($maxValue)[1];
     }
 }
