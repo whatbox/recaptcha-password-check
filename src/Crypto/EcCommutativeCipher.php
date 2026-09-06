@@ -17,14 +17,12 @@ final class EcCommutativeCipher
 
     private readonly Prime $curve;
     private readonly BigInteger $privateKey;
-    private readonly int $fieldLength;
 
     private function __construct(Prime $curve, BigInteger $privateKey)
     {
         $this->curve = $curve;
         $curve->rangeCheck($privateKey);
         $this->privateKey = $privateKey;
-        $this->fieldLength = $curve->getLengthInBytes();
     }
 
     public static function createWithNewKey(): self
@@ -105,10 +103,8 @@ final class EcCommutativeCipher
     private function encodePoint(array $point): string
     {
         [$x, $y] = $point;
-        $xBytes = $this->padToFieldLength(self::bigIntegerToBytes($x->toBigInteger()));
-        $prefix = $y->isOdd() ? "\x03" : "\x02";
 
-        return $prefix . $xBytes;
+        return ($y->isOdd() ? "\x03" : "\x02") . $x->toBytes();
     }
 
     private static function decodePointForCurve(string $ciphertext, Prime $curve): array
@@ -119,16 +115,6 @@ final class EcCommutativeCipher
         }
 
         return $curve->derivePoint($ciphertext);
-    }
-
-    private function padToFieldLength(string $bytes): string
-    {
-        $trimmed = ltrim($bytes, "\0");
-        if ($trimmed === '') {
-            $trimmed = "\0";
-        }
-
-        return str_pad($trimmed, $this->fieldLength, "\0", STR_PAD_LEFT);
     }
 
     private function randomOracle(string $bytes, BigInteger $maxValue): BigInteger
