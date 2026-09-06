@@ -74,6 +74,7 @@ final class EcCommutativeCipher
         return $this->encodePoint($this->hashIntoCurvePoint($input));
     }
 
+    /** @return array{PrimeInteger, PrimeInteger} */
     private function hashIntoCurvePoint(string $input): array
     {
         $prime = $this->curve->getModulo();
@@ -91,22 +92,27 @@ final class EcCommutativeCipher
                 }
                 return [$fieldX, $sqrt];
             }
-            $candidate = $this->randomOracle(ltrim($candidate->toBytes(), "\0") ?: "\0", $prime);
+            // BigInteger::toBytes() is minimal big-endian (no leading zeros)
+            $candidate = $this->randomOracle($candidate->toBytes(), $prime);
         }
     }
 
+    /** @return array{PrimeInteger, PrimeInteger} */
     private function decodePoint(string $ciphertext): array
     {
         return self::decodePointForCurve($ciphertext, $this->curve);
     }
 
+    /** @param array{PrimeInteger, PrimeInteger} $point */
     private function encodePoint(array $point): string
     {
         [$x, $y] = $point;
 
+        // Unlike BigInteger, PrimeField\Integer::toBytes() is zero-padded to the field length
         return ($y->isOdd() ? "\x03" : "\x02") . $x->toBytes();
     }
 
+    /** @return array{PrimeInteger, PrimeInteger} */
     private static function decodePointForCurve(string $ciphertext, Prime $curve): array
     {
         // derivePoint() validates the prefix byte and that the point is on the curve, but not the length
