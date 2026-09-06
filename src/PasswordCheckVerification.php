@@ -43,23 +43,18 @@ class PasswordCheckVerification
         return new self($cipher, $username, $encryptedHash, $lookupHashPrefix);
     }
 
+    /** @param string[] $encryptedLeakMatchPrefixes */
     public function verify(string $reEncryptedUserCredentialsHash, array $encryptedLeakMatchPrefixes): PasswordCheckResult
     {
-        if ($reEncryptedUserCredentialsHash === '') {
-            throw new \InvalidArgumentException('reEncryptedLookupHash must be present');
-        }
-
         $serverEncrypted = $this->cipher->decrypt($reEncryptedUserCredentialsHash);
         $reHashed = hash('sha256', $serverEncrypted, binary: true);
         $credentialsLeaked = false;
         foreach ($encryptedLeakMatchPrefixes as $prefix) {
-            if (!is_string($prefix)) {
-                continue;
-            }
             if ($prefix === '') {
-                continue;
+                throw new \RuntimeException('Google response contains an empty prefix');
             }
-            if ($this->isPrefix($reHashed, $prefix)) {
+
+            if (str_starts_with($reHashed, $prefix)) {
                 $credentialsLeaked = true;
                 break;
             }
@@ -81,10 +76,5 @@ class PasswordCheckVerification
     public function getLookupHashPrefix(): string
     {
         return $this->lookupHashPrefix;
-    }
-
-    private function isPrefix(string $hash, string $prefix): bool
-    {
-        return strncmp($hash, $prefix, strlen($prefix)) === 0;
     }
 }
